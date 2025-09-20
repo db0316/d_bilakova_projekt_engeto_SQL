@@ -1,5 +1,13 @@
 # d_bilakova_projekt_engeto_SQL
-## Zadání projektu - hlavní a sekundární tabulka ##
+## Zadání projektu ##
+Projekt simuluje situaci, kdy našemu analytickému oddělení nezávislé společnosti, která se zabývá životní úrovní občanů, pomáhám odpovědět pár definovaných výzkumných otázek, které adresují dostupnost základních potravin široké veřejnosti. Vydefinované základní otázky a odpovědi na ně budou předány tiskovému oddělení, jež bude data prezentovat na konferenci zaměřené na tuto oblast. Mým úkolem je připravit robustní datové podklady, ve kterých bude možné vidět porovnání dostupných potravin na základě průměrných příjmů za určité časové období. 
+
+Jako dodatečný materiál mám za úkol připravit rovněž i tabulku s HDP, GINI koeficientem a populací dalších evropských států ve stejném období, jako primární přehled pro ČR. 
+
+Primární data vychází z veřejně dostupných zdrojů, které již moji kolegové připravili do tabulek v databázi.
+
+
+## Hlavní a sekundární tabulka ##
 Veškeré dotazy jsou volány z hlavní a sekundární tabulky. Sekundární tabulka obsahuje data platná pouze pro evropské země, přičemž protože se ptáme na HDP, jsou výsledky omezeny pouze na hodnoty obsahující tuto inforamci.
 
 Hlavní tabulka spojuje v zásadě dva primární zdroje informací (czechia_price a czechia_payroll), přičemž párovací znak je společné datum, kdy máme data k dispozici (tj. 1Q/2006 - 4Q/2018). Výsledná tabulka je dále omezena (ne)znalostí názvů jednotlivých kategorií potravin. Průměrné ceny potravin jsou pak brány za celou republiku (tedy hodnota v části kraj je NULL). U průměrných mezd pak beru hodnoty za jednotlivá odvětví, takže průměrná mzda (v primární tabulce je u odvětví hodnota NULL), se v mé hlavní tabulce neobjevuje. V SQL dotazech tedy průměrnou mzdu počítám jako prostý aritmetický průměr za všechna odvětví; tato hodnota se od průměrné mzdy v primární tabulce mírně liší.
@@ -16,24 +24,26 @@ Otázka:
 Rostou v průběhu let mzdy ve všech odvětvích, nebo v některých klesají?
 
 Zvolený postup: 
-Zjišťuji, zda je v posledním období, za které mám data k dispozici, hlášena nejvyšší průměrná mzda v daném odvětví. Pokud ano, flag_check mi vrátí hodnotu 1. V opačném případě se objeví 0.
+Pomocí funkce LAG zjišťuji meziroční rozdíl průměrných mezd v jednotlivých odvětvích. Případům, kdy došlo k poklesu, je dán příznak 1, nepravda je označena 0 (diff_flag). Nakonec vyhledám ty případy, kde suma všech těchto příznaků je 0 pro zjištění odvětví, kde v průběhu analyzovaného období nenastal pokles mezd. 
 
 Odpověď: 
-Za analyzované období mzdy v průběhu let rostly s výjimkou tří odvětví: 
-1. Informační a komunikační činnosti, 
-2. Peněžnictví a pojišťovniství,
-3. Výroba a rozvod elektřiny, plynu, tepla a klimatiz. vzduchu.
-Mzda v odvětvích Informační a komunikační činnosti + Peněžnitví a pojišťovnictví dosáhla svého vrcholu na začátku roku 2018, ale do konce roku došlo k jejímu poklesu. V odvětví Výroba a rozvod elektřiny, plynu, tepla a klimatiz. vzduchu pak bylo dosaženo maximální mzdy v 4Q2012.
+Za analyzované období mzdy kontinuálně rostly pouze ve třech odvětvích:
+1. Ostatní činnosti, 
+2. Zdravotní a sociální péče,
+3. Zpracovatelský průmysl.
+
+Ve všech ostatních odvětvích došlo alespoň jednou k meziročnímu poklesu mezd v rámci celého sledovaného období.
+
 
 ### 2. úloha ###
 Otázka:
 Kolik je možné si koupit litrů mléka a kilogramů chleba za první a poslední srovnatelné období v dostupných datech cen a mezd?
 
 Zvolený postup:
-Pro zjištění průměrných mezd v prvním a posledním srovnatelném období používám prostý aritmetický průměr hodnot v daném období za všechna odvětví. Hledané období volám přes funkce max a min. U vybraných kategorií potravin pak hodnoty za zvolené období zjišťuji přes využití příkazu LIMIT při odlišném řazení záznamů v části price_measured_to. Hledaný počet litrů mléka / kilogramů chleba pak zjišťuji jako podíl vypočtené průměrné mzdy a průměrné jednotkové ceny potraviny.
+Pro zjištění průměrných mezd v prvním a posledním srovnatelném období používám prostý aritmetický průměr hodnot v daném období za všechna odvětví. Hledané období volám přes funkce max a min. U vybraných kategorií potravin pak hodnoty za zvolené období zjišťuji opět přes použití funkce max a min s tím, že přidávám dále omezení pouze na jeden kvartál a odvětví. Hledaný počet litrů mléka / kilogramů chleba pak zjišťuji jako podíl vypočtené průměrné mzdy a průměrné jednotkové ceny potraviny.
 
 Odpověď: 
-Při zohlednění průměrných mezd za všechna odvětví (prostý aritmetický průměr) bylo možné v 1Q/2006 koupit 1.402,53 l mléka a 1.342,33 kg chleba. Na konci analyzovaného období (tj. 4Q/2018) bylo možné díky výrazně vyššímu růstu mezd za průměrnou mzdu pořídit 2.459,96 l mléka a 2.354,37 kg chleba.
+Při zohlednění průměrných mezd za všechna odvětví (prostý aritmetický průměr) bylo možné v 1Q/2006 koupit 1.402,53 l mléka a 1.342,33 kg chleba. Na konci analyzovaného období (tj. 4Q/2018) bylo možné díky výrazně vyššímu růstu mezd za průměrnou mzdu pořídit 1.795,58 l mléka a 1.418,90 kg chleba.
 
 ### 3. úloha ###
 Otázka:
@@ -72,4 +82,3 @@ Dá se vypozorovat určitá souvislost mezi výraznějším nárůstem mezd / ce
 
 Provázanost vývoje cen potravin, mezd a HDP vidíme například na datech za roky 2007 a 2008. Nárůst cen potravin a mezd byl ovlivněn výrazným růstem HDP v období 2005-2007. Nižší nárůst HDP v roce 2008 se projevil až s ročním zpožděním v podobě zlevnění potravin a nižšího růstu mezd.
 Na druhou stranu více jak 5% nárůst HDP v roce 2015 žádný výrazný dopad do vývoje cen potravin a mezd v daném období neměl. Důvodem je zřejmě skutečnost, že trhy vyčkávaly na další vývoj pro zjištění, zda se nejedná o mimořádnou výjimku. V roce 2017 již došlo ke skokovému nárůstu cen potravin i mezd (nárůst HDP v daném období byl rovněž více jak 5%, i když v roce 2016 nebyl tak výrazný). Na zpomalení růstu HPD v roce 2018 pružně zareagoval pouze trh potravin; mzdy naopak vzrostly ještě výrazněji než v předchozím období.
-

@@ -1,37 +1,30 @@
-WITH max_avg_wages AS
-	(SELECT
-		industry
-		, max(average_wages) AS max_avg_wages
-	FROM t_Daniela_Bilakova_project_SQL_primary_final AS dbprimar
-	GROUP BY
+CREATE VIEW v_daniela_bilakova_avg_payroll_yoy AS
+WITH avg_payroll_YoY AS
+	(SELECT 
 		industry 
-	),	
-max_date AS 
-	(SELECT
-		DISTINCT industry
-		, max(payroll_year) AS max_date
-		, max(payroll_quarter) AS max_quarter
-	FROM t_Daniela_Bilakova_project_SQL_primary_final AS dbprimar
+		, payroll_year
+		, round(avg(average_wages)::NUMERIC, 2) AS avg_payroll
+		, ((avg(average_wages) - LAG(avg(average_wages)) OVER 
+			(PARTITION BY industry 
+			ORDER BY payroll_year, industry))
+			) AS avg_payroll_YoY
+	FROM t_Daniela_Bilakova_project_SQL_primary_final
 	GROUP BY
-		DISTINCT industry
+		payroll_year
+		, industry
 	)
-SELECT 
-	DISTINCT dbprimar.industry
-	, dbprimar.payroll_year
-	, dbprimar.average_wages
-	, maw.max_avg_wages
+SELECT *
 	, CASE 
-		WHEN maw.max_avg_wages = dbprimar.average_wages THEN 1 
-		WHEN maw.max_avg_wages >  dbprimar.average_wages THEN 0
-	END AS flag_check
+		WHEN avg_payroll_YoY < 0 THEN 1
+		ELSE 0
+	END AS diff_flag
 FROM 
-	t_Daniela_Bilakova_project_SQL_primary_final AS dbprimar
-JOIN max_avg_wages AS maw
-	ON dbprimar.industry = maw.industry
-JOIN max_date AS md
-	ON dbprimar.industry = md.industry
-	AND dbprimar.payroll_year = md.max_date
-	AND dbprimar.payroll_quarter = md.max_quarter
+	avg_payroll_YoY AS avgpay
 ORDER BY
-	flag_check ASC
+	diff_flag DESC
+;
+SELECT industry
+FROM v_daniela_bilakova_avg_payroll_yoy
+GROUP BY industry
+HAVING sum(diff_flag) = 0
 ;
